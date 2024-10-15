@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal</title>
+    <!-- Link to external style.css -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Admin Portal</h1>
+
+        <label for="question">Add a Question:</label>
+        <input type="text" id="question" placeholder="Enter your question">
+
+        <label for="answer">Add Possible Answers:</label>
+        <input type="text" id="answer" placeholder="Enter an answer">
+        <button id="add-answer">Add Answer</button>
+
+        <ul id="answer-list"></ul>
+
+        <button id="submit-question">Submit Question</button>
+    </div>
+    <a href="/controller">Go to Controller Page</a></br>
+    <a href="/logout">Logout</a>
+
+    <script>
+        const answers = [];
+
+        document.getElementById('add-answer').addEventListener('click', () => {
+            const answerInput = document.getElementById('answer');
+            const answer = answerInput.value.trim();
+            if (answer) {
+                answers.push(answer);
+
+                const listItem = document.createElement('li');
+                listItem.textContent = answer;
+                document.getElementById('answer-list').appendChild(listItem);
+
+                answerInput.value = '';
+            } else {
+                alert("Please enter a valid answer.");
+            }
+        });
+
+        document.getElementById('submit-question').addEventListener('click', () => {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value.trim();
+
+            if (!question || answers.length === 0) {
+                alert("Please enter a question and at least one answer.");
+                return;
+            }
+
+            const questionData = {
+                text: question,
+                answers: answers
+            };
+
+            fetch('/addquestion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(questionData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                } else {
+                    alert('Question added successfully!');
+
+                    questionInput.value = '';
+                    document.getElementById('answer-list').innerHTML = '';
+                    answers.length = 0;
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('An error occurred while adding the question.');
+            });
+        });
+    </script>
+</body>
+</html>

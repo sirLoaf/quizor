@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <a href="/logout">Logout</a>
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Admin / Controller Login</h1>
+    <input type="password" id="password" placeholder="Enter your password" required>
+    <button onclick="login()">Login</button>
+
+    <script>
+        // Login function
+        async function login() {
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password })
+            });
+
+            if (response.status === 200) {
+                // Redirect to admin page after successful login
+                window.location.href = '/admin';
+            } else {
+                alert('Invalid password');
+            }
+        }
+    </script>
+</body>
+</html>

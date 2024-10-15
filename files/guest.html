@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hochziitsgäst-Frage</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .question {
+            margin: 20px 0;
+        }
+        .answer {
+            cursor: pointer;
+            padding: 10px;
+            border: 1px solid #0056b3;
+            border-radius: 5px;
+            margin: 5px 0;
+            background-color: #e7f1ff;
+            transition: background-color 0.2s;
+        }
+        .selected {
+            background-color: #0056b3;
+            color: white;
+        }
+        .rank {
+            font-weight: bold;
+            color: green;
+            margin-left: 10px;
+        }
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .question-indicator {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="guest-content">
+        <h1>Willkommä</h1>
+        
+        <div id="guest-name-section">
+            <label for="guest-name">Wie heissisch?:</label>
+            <input type="text" id="guest-name" placeholder="Your Name">
+            <button id="start-button">Startä</button>
+        </div>
+
+        <div id="questions-section" style="display: none;">
+            <h2>Beantworte die folgend Frag:</h2>
+            <div id="question-indicator"></div>
+            <div id="question-container"></div>
+
+            <div class="pagination">
+                <button id="prev-button" style="display: none;">Vorherigi</button>
+                <button id="next-button">Nächst</button>
+            </div>
+        </div>
+
+        <button id="submit-button" style="display: none;">Antworte abschickä</button>
+    </div>
+
+    <script>
+        let guestName = '';
+        let currentSelections = {}; // Store the guest's selected answers and their ranks
+        let questions = []; // Store the questions (including their MongoDB _id)
+        let currentQuestionIndex = 0; // Index to track the current question
+
+        // Load the questions from the server
+        async function loadQuestions() {
+            const response = await fetch('/guest/questions');
+            const data = await response.json();
+            return data;
+        }
+
+        // Display the current question
+        function displayCurrentQuestion() {
+            const questionContainer = document.getElementById('question-container');
+            const questionIndicator = document.getElementById('question-indicator');
+
+            // Clear previous content
+            questionContainer.innerHTML = '';
+
+            const question = questions[currentQuestionIndex];
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'question';
+
+            const questionText = document.createElement('h3');
+            questionText.innerText = question.text;
+            questionDiv.appendChild(questionText);
+
+            const answersList = document.createElement('div');
+            question.answers.forEach(answer => {
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'answer';
+                answerDiv.innerText = answer.text;
+                answerDiv.addEventListener('click', () => toggleAnswerSelection(currentQuestionIndex, answerDiv, answer.text));
+
+                // Check if this answer is already selected and mark it as selected
+                const selectedAnswers = currentSelections[questions[currentQuestionIndex]._id] || [];
+                if (selectedAnswers.includes(answer.text)) {
+                    answerDiv.classList.add('selected');
+                    const rank = selectedAnswers.indexOf(answer.text) + 1;
+                    const rankSpan = document.createElement('span');
+                    rankSpan.className = 'rank';
+                    rankSpan.innerText = `Rank ${rank}`;
+                    answerDiv.appendChild(rankSpan);
+                }
+
+                answersList.appendChild(answerDiv);
+            });
+
+            questionDiv.appendChild(answersList);
+            questionContainer.appendChild(questionDiv);
+
+            // Update the question indicator
+            questionIndicator.innerText = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+        }
+
+        // Toggle the selection of an answer (select/unselect)
+        function toggleAnswerSelection(questionIndex, answerDiv, answerText) {
+            const questionId = questions[questionIndex]._id; // Use MongoDB _id
+            const selectedAnswers = currentSelections[questionId] || [];
+
+            // If the answer is already selected, unselect it
+            if (selectedAnswers.includes(answerText)) {
+                unselectAnswer(questionId, answerDiv, answerText);
+            } else {
+                // Otherwise, select it (maximum of 5 selections)
+                if (selectedAnswers.length < 5) {
+                    selectedAnswers.push(answerText);
+                    currentSelections[questionId] = selectedAnswers;
+
+                    // Mark this answer as selected
+                    answerDiv.classList.add('selected');
+                    updateRanks(questionId);
+                }
+            }
+        }
+
+        // Unselect an answer and update ranks
+        function unselectAnswer(questionId, answerDiv, answerText) {
+            const selectedAnswers = currentSelections[questionId];
+
+            // Remove the answer from the selected list
+            currentSelections[questionId] = selectedAnswers.filter(ans => ans !== answerText);
+
+            // Unmark this answer as selected
+            answerDiv.classList.remove('selected');
+
+            // Remove the rank span if it exists
+            const rankSpan = answerDiv.querySelector('.rank');
+            if (rankSpan) rankSpan.remove();
+
+            // Update ranks for the remaining selections
+            updateRanks(questionId);
+        }
+
+        // Update the ranks for a question after selecting/unselecting
+        function updateRanks(questionId) {
+            const selectedAnswers = currentSelections[questionId] || [];
+            const questionDiv = document.querySelectorAll('.question')[0]; // Only one question is displayed at a time
+            const answerDivs = questionDiv.querySelectorAll('.answer');
+
+            // Loop through each answer and update its rank if it is selected
+            answerDivs.forEach(answerDiv => {
+                const answerText = answerDiv.innerText;
+                const rankSpan = answerDiv.querySelector('.rank');
+
+                if (selectedAnswers.includes(answerText)) {
+                    const rank = selectedAnswers.indexOf(answerText) + 1;
+
+                    // If rank span doesn't exist, create it
+                    if (!rankSpan) {
+                        const newRankSpan = document.createElement('span');
+                        newRankSpan.className = 'rank';
+                        newRankSpan.innerText = `Rank ${rank}`;
+                        answerDiv.appendChild(newRankSpan);
+                    } else {
+                        rankSpan.innerText = `Rank ${rank}`;
+                    }
+                } else if (rankSpan) {
+                    // If the answer is not selected, remove the rank span
+                    rankSpan.remove();
+                }
+            });
+        }
+
+        // Go to the next question
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                displayCurrentQuestion();
+            }
+            updateButtons();
+        }
+
+        // Go to the previous question
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayCurrentQuestion();
+            }
+            updateButtons();
+        }
+
+        // Update the visibility of buttons (Next, Previous, Submit)
+        function updateButtons() {
+            const prevButton = document.getElementById('prev-button');
+            const nextButton = document.getElementById('next-button');
+            const submitButton = document.getElementById('submit-button');
+
+            // Show/hide previous button
+            if (currentQuestionIndex === 0) {
+                prevButton.style.display = 'none';
+            } else {
+                prevButton.style.display = 'inline-block';
+            }
+
+            // Show/hide next or submit button
+            if (currentQuestionIndex === questions.length - 1) {
+                nextButton.style.display = 'none';
+                submitButton.style.display = 'inline-block';
+            } else {
+                nextButton.style.display = 'inline-block';
+                submitButton.style.display = 'none';
+            }
+        }
+
+        // Submit the guest's answers
+        async function submitAnswers() {
+            const response = await fetch('/guest/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: guestName, answers: currentSelections }),
+            });
+
+            const data = await response.json();
+            if (response.status === 200) {
+                alert('Answers submitted successfully!');
+                currentSelections = {}; // Clear selections after submission
+            } else {
+                alert('Failed to submit answers');
+            }
+        }
+
+        // Start the questionnaire
+        document.getElementById('start-button').addEventListener('click', async () => {
+            guestName = document.getElementById('guest-name').value.trim();
+
+            if (!guestName) {
+                alert('Please enter your name');
+                return;
+            }
+
+            // Hide name section and show questions
+            document.getElementById('guest-name-section').style.display = 'none';
+            document.getElementById('questions-section').style.display = 'block';
+
+            // Load and display questions
+            questions = await loadQuestions();
+            displayCurrentQuestion();
+            updateButtons();
+        });
+
+        // Next and Previous button event listeners
+        document.getElementById('next-button').addEventListener('click', nextQuestion);
+        document.getElementById('prev-button').addEventListener('click', prevQuestion);
+
+        // Submit answers
+        document.getElementById('submit-button').addEventListener('click', submitAnswers);
+    </script>
+
+</body>
+</html>

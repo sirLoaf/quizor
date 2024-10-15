@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Feud Controller</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .controller-section {
+            margin-top: 30px;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 18px;
+            margin: 5px;
+        }
+        .team-points-column {
+            display: inline-block;
+            width: 45%;
+            vertical-align: top;
+            margin: 10px;
+        }
+        .team-title {
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+        .team-points-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .answer-button {
+            background-color: #5a8dc9;
+            border: 2px solid #333;
+            padding: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .x-button {
+            margin-top: 10px;
+            color: red;
+        }
+        #next-question {
+            display: none; /* Initially hidden */
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Family Feud Controller</h1>
+
+    <div id="start-section">
+        <button class="button" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Team Setup Section -->
+    <div id="team-setup-section" class="controller-section">
+        <h2>Define Teams</h2>
+        <label for="team1-name">Team 1 Name: </label>
+        <input type="text" id="team1-name" placeholder="Enter Team 1 Name">
+        <br>
+        <label for="team2-name">Team 2 Name: </label>
+        <input type="text" id="team2-name" placeholder="Enter Team 2 Name">
+        <br>
+        <button class="button" onclick="setTeams()">Set Teams</button>
+    </div>
+    <div id="question-progress" class="controller-section">
+        <!-- Progress will be updated dynamically -->
+        Question 1 of 5
+    </div>
+    <!-- Team Points and X Section -->
+    <div id="team-points-section" class="controller-section">
+        <div class="team-points-column" id="team1-column">
+            <h3 id="team1-title" class="team-title">Team 1</h3>
+            <ul id="team1-points-list" class="team-points-list"></ul>
+            <button class="button x-button" onclick="assignXToTeam(1)">Give X to Team 1</button>
+        </div>
+        <div class="team-points-column" id="team2-column">
+            <h3 id="team2-title" class="team-title">Team 2</h3>
+            <ul id="team2-points-list" class="team-points-list"></ul>
+            <button class="button x-button" onclick="assignXToTeam(2)">Give X to Team 2</button>
+        </div>
+    </div>
+
+    <!-- Next Question Button -->
+    <div id="next-question">
+        <button class="button" onclick="nextQuestion()">Next Question</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let totalQuestions = 0;
+        let currentQuestionIndex = 0;
+        const socket = io();
+        const pointValues = [5, 3, 2, 1]; // Points for top, second, third, and remaining answers
+        let xCountTeam1 = 0; // X count for Team 1
+        let xCountTeam2 = 0; // X count for Team 2
+        let revealedAnswers = []; // Track revealed answers
+        let totalAnswers = 0; // Total number of answers for the current question
+
+        // Start the game and load the questions ordered by answer count (highest first)
+        async function startGame() {
+            const response = await fetch('/controller/start-game');
+            const data = await response.json();
+
+            if (response.status === 200) {
+                totalQuestions = data.totalQuestions;
+                currentQuestionIndex = data.currentQuestionIndex;
+
+                socket.emit('startGame', { question: data.question, answers: data.answers });
+
+                // Update the UI with the first question and its answers
+                displayAnswersForTeams(data.answers);
+                updateQuestionProgress();
+            } else {
+                alert('No questions available to start.');
+            }
+        }
+
+        // Set team names
+        function setTeams() {
+            const team1Name = document.getElementById('team1-name').value;
+            const team2Name = document.getElementById('team2-name').value;
+
+            // Update the team titles in the points section
+            document.getElementById('team1-title').innerText = team1Name || "Team 1";
+            document.getElementById('team2-title').innerText = team2Name || "Team 2";
+
+            socket.emit('setTeams', { team1Name, team2Name });
+        }
+
+        // Display the answers for both teams ordered by the count
+        function displayAnswersForTeams(answers) {
+            const team1List = document.getElementById('team1-points-list');
+            const team2List = document.getElementById('team2-points-list');
+            team1List.innerHTML = ''; // Clear any previous answers
+            team2List.innerHTML = ''; // Clear any previous answers
+
+            answers.sort((a, b) => b.count - a.count); // Sort answers by count (descending)
+
+            totalAnswers = answers.length; // Set the total number of answers
+            revealedAnswers = []; // Reset revealed answers
+
+            answers.forEach((answer, index) => {
+                const points = pointValues[index] || 1; // Get points based on rank, default to 1 for remaining
+
+                // Create answer buttons for both teams, clickable to assign points
+                const answerButtonTeam1 = `<li><button class="answer-button" onclick="addPointsToTeam(1, '${answer.text}', ${points})">${answer.text}: +${points} points (${answer.count} total)</button></li>`;
+                const answerButtonTeam2 = `<li><button class="answer-button" onclick="addPointsToTeam(2, '${answer.text}', ${points})">${answer.text}: +${points} points (${answer.count} total)</button></li>`;
+
+                // Add to both team lists
+                team1List.innerHTML += answerButtonTeam1;
+                team2List.innerHTML += answerButtonTeam2;
+            });
+        }
+
+        // Add points to the respective team
+        function addPointsToTeam(teamNumber, answerText, points) {
+            const teamName = teamNumber === 1 ? 'Team 1' : 'Team 2';
+
+            // Emit event to update points for the selected team
+            socket.emit('updateTeam', { teamName, points });
+            socket.emit('revealAnswer', { answerText: answerText, team: teamName });
+
+            // Track revealed answers
+            if (!revealedAnswers.includes(answerText)) {
+                revealedAnswers.push(answerText);
+
+                // Check if all answers are revealed, then show "Next Question" button
+                if (revealedAnswers.length === totalAnswers) {
+                    document.getElementById('next-question').style.display = 'block'; // Show the "Next Question" button
+                }
+            }
+        }
+
+        // Assign an X to the respective team
+        function assignXToTeam(teamNumber) {
+            if (teamNumber === 1) {
+                xCountTeam1++;
+                socket.emit('updateX', { teamName: 'Team 1', xCount: xCountTeam1 });
+            } else if (teamNumber === 2) {
+                xCountTeam2++;
+                socket.emit('updateX', { teamName: 'Team 2', xCount: xCountTeam2 });
+            }
+        }
+
+        // Move to the next question
+        function nextQuestion() {
+            document.getElementById('next-question').style.display = 'none'; // Hide the "Next Question" button
+            socket.emit('nextQuestion'); // Ask the server for the next question
+        }
+        // Update question progress in the UI
+        function updateQuestionProgress() {
+            const progressText = `Question ${currentQuestionIndex} of ${totalQuestions}`;
+            document.getElementById('question-progress').innerText = progressText;
+        }
+        // Listen for the next question from the server
+        socket.on('nextQuestion', (data) => {
+            currentQuestionIndex = data.currentQuestionIndex;
+            totalQuestions = data.totalQuestions;
+
+            displayAnswersForTeams(data.answers); // Display the next question's answers
+            updateQuestionProgress(); // Update progress indicator
+        });
+
+        socket.on('noMoreQuestions', () => {
+            alert('No more questions available');
+        });
+    </script>
+</body>
+</html>
