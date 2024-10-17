@@ -21,7 +21,7 @@
         }
         .team-points-column {
             display: inline-block;
-            width: 45%;
+            width: 30%;
             vertical-align: top;
             margin: 10px;
         }
@@ -70,10 +70,12 @@
         <br>
         <button class="button" onclick="setTeams()">Set Teams</button>
     </div>
+    
+    <!-- Question Progress Section -->
     <div id="question-progress" class="controller-section">
-        <!-- Progress will be updated dynamically -->
         Question 1 of 5
     </div>
+    
     <!-- Team Points and X Section -->
     <div id="team-points-section" class="controller-section">
         <div class="team-points-column" id="team1-column">
@@ -85,6 +87,11 @@
             <h3 id="team2-title" class="team-title">Team 2</h3>
             <ul id="team2-points-list" class="team-points-list"></ul>
             <button class="button x-button" onclick="assignXToTeam(2)">Give X to Team 2</button>
+        </div>
+        <div class="team-points-column" id="unanswered-column">
+            <h3 class="team-title">Unanswered</h3>
+            <ul id="unanswered-list" class="team-points-list"></ul>
+            <button class="button x-button" onclick="revealUnanswered()">Reveal Unanswered</button>
         </div>
     </div>
 
@@ -139,8 +146,10 @@
         function displayAnswersForTeams(answers) {
             const team1List = document.getElementById('team1-points-list');
             const team2List = document.getElementById('team2-points-list');
+            const unansweredList = document.getElementById('unanswered-list');
             team1List.innerHTML = ''; // Clear any previous answers
             team2List.innerHTML = ''; // Clear any previous answers
+            unansweredList.innerHTML = ''; // Clear unanswered column
 
             answers.sort((a, b) => b.count - a.count); // Sort answers by count (descending)
 
@@ -153,10 +162,12 @@
                 // Create answer buttons for both teams, clickable to assign points
                 const answerButtonTeam1 = `<li><button class="answer-button" onclick="addPointsToTeam(1, '${answer.text}', ${points})">${answer.text}: +${points} points (${answer.count} total)</button></li>`;
                 const answerButtonTeam2 = `<li><button class="answer-button" onclick="addPointsToTeam(2, '${answer.text}', ${points})">${answer.text}: +${points} points (${answer.count} total)</button></li>`;
+                const answerButtonUnanswered = `<li><button class="answer-button" onclick="revealUnanswered('${answer.text}')">${answer.text} (${answer.count} total)</button></li>`;
 
-                // Add to both team lists
+                // Add to both team lists and unanswered column
                 team1List.innerHTML += answerButtonTeam1;
                 team2List.innerHTML += answerButtonTeam2;
+                unansweredList.innerHTML += answerButtonUnanswered;
             });
         }
 
@@ -167,6 +178,21 @@
             // Emit event to update points for the selected team
             socket.emit('updateTeam', { teamName, points });
             socket.emit('revealAnswer', { answerText: answerText, team: teamName });
+
+            // Track revealed answers
+            if (!revealedAnswers.includes(answerText)) {
+                revealedAnswers.push(answerText);
+
+                // Check if all answers are revealed, then show "Next Question" button
+                if (revealedAnswers.length === totalAnswers) {
+                    document.getElementById('next-question').style.display = 'block'; // Show the "Next Question" button
+                }
+            }
+        }
+
+        // Reveal unanswered answer without assigning points
+        function revealUnanswered(answerText) {
+            socket.emit('revealAnswer', { answerText: answerText, team: 'none' }); // No team gets credit
 
             // Track revealed answers
             if (!revealedAnswers.includes(answerText)) {
@@ -195,11 +221,13 @@
             document.getElementById('next-question').style.display = 'none'; // Hide the "Next Question" button
             socket.emit('nextQuestion'); // Ask the server for the next question
         }
+
         // Update question progress in the UI
         function updateQuestionProgress() {
             const progressText = `Question ${currentQuestionIndex} of ${totalQuestions}`;
             document.getElementById('question-progress').innerText = progressText;
         }
+
         // Listen for the next question from the server
         socket.on('nextQuestion', (data) => {
             currentQuestionIndex = data.currentQuestionIndex;
