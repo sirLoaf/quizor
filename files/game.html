@@ -134,8 +134,11 @@
                 // Clear any previous answers
                 document.getElementById('answers').innerHTML = '';
 
+                // Sort answers by count in descending order (top answers first)
+                const sortedAnswers = data.answers.sort((a, b) => b.count - a.count);
+
                 // Create answer placeholders
-                data.answers.forEach((answer) => {
+                sortedAnswers.forEach((answer) => {
                     const li = document.createElement('li');
                     li.classList.add('answer-item');
                     li.innerHTML = `<span>${answer.text}</span> <span class="count" style="display:none;">(${answer.count})</span>`;
@@ -212,6 +215,7 @@
                 buzzedInfo.innerText = `${team} hät zerscht druckt!`; // Display which team buzzed first
                 buzzedInfo.style.display = 'block'; // Show the buzzed info
             });
+
             socket.on('resetBuzzer', () => {
                 const buzzedInfo = document.getElementById('buzzed-info');
                 buzzedInfo.style.display = 'none'; // Hide the buzzed info
