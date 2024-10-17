@@ -4,6 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Buzzer</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column; /* Change to column to stack them vertically */
+            width: 100%;
+        }
+
+        /* Fullscreen split between two teams (top and bottom) */
+        #team1, #team2 {
+            width: 100%;
+            height: 50%; /* Each team takes up half the height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.5s ease;
+        }
+
+        /* Team 1: Red */
+        #team1 {
+            background-color: #ffcccb;
+        }
+
+        /* Team 2: Blue */
+        #team2 {
+            background-color: #add8e6;
+        }
+
+        /* When a team buzzes, highlight the section */
+        .buzzed {
+            background-color: yellow !important;
+            color: black;
+        }
+    </style>
 </head>
 <body>
-    <h1>Team Buzzer</h
+
+    <div id="team1">
+        Team 1
+    </div>
+    <div id="team2">
+        Team 2
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const team1 = document.getElementById('team1');
+        const team2 = document.getElementById('team2');
+        let buzzerActive = true; // Track if a buzz is allowed (only the first team can buzz)
+
+        const socket = io();
+
+        // Handle Team 1 buzzing in
+        team1.addEventListener('click', () => {
+            if (buzzerActive) {
+                buzzerActive = false; // Disable further buzzing
+                team1.classList.add('buzzed'); // Highlight Team 1
+                socket.emit('teamBuzzed', 'Team 1'); // Notify server that Team 1 buzzed first
+            }
+        });
+
+        // Handle Team 2 buzzing in
+        team2.addEventListener('click', () => {
+            if (buzzerActive) {
+                buzzerActive = false; // Disable further buzzing
+                team2.classList.add('buzzed'); // Highlight Team 2
+                socket.emit('teamBuzzed', 'Team 2'); // Notify server that Team 2 buzzed first
+            }
+        });
+
+        // Reset buzzer system (allow new buzzes)
+        socket.on('resetBuzzer', () => {
+            buzzerActive = true; // Enable buzzing again
+            team1.classList.remove('buzzed');
+            team2.classList.remove('buzzed');
+        });
+
+        socket.on('setTeams', (teamData) => {
+            document.getElementById('team1').innerHTML = `Team 1: ${teamData.team1Name}`;
+            document.getElementById('team2').innerHTML = `Team 2: ${teamData.team2Name}`;
+        });
+    </script>
+
+</body>
+</html>

@@ -100,6 +100,11 @@
         <button class="button" onclick="nextQuestion()">Next Question</button>
     </div>
 
+    <!-- Reset Buzzer Button -->
+    <div id="reset-buzzer-section">
+        <button class="button" onclick="resetBuzzer()">Reset Buzzer</button>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         let totalQuestions = 0;
@@ -220,6 +225,11 @@
         function nextQuestion() {
             document.getElementById('next-question').style.display = 'none'; // Hide the "Next Question" button
             socket.emit('nextQuestion'); // Ask the server for the next question
+        }
+
+        // Reset the buzzer system
+        function resetBuzzer() {
+            socket.emit('resetBuzzer'); // Emit a reset buzzer event to the server
         }
 
         // Update question progress in the UI

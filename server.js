@@ -92,6 +92,9 @@ app.get('/guest', (req, res) => {
 app.get('/game', (req, res) => {
     res.sendFile(path.join(__dirname, 'files', 'game.html'));
 });
+app.get('/buzzer', (req, res) => {
+    res.sendFile(path.join(__dirname, 'files', 'buzzer.html'));
+});
 app.get('/guest/questions', async (req, res) => {
     try {
         const questions = await questionsCollection.find().toArray();
@@ -234,10 +237,14 @@ async function startServer() {
             });
 
             // Handle other game events (buzzers, answers, etc.)
-            socket.on('buzz', (team) => {
+            socket.on('teamBuzzed', (team) => {
+                console.log(`${team} buzzed first!`);
                 io.emit('teamBuzzed', team); // Notify all clients which team buzzed first
             });
-
+            // Reset the buzzer when needed (e.g., from the controller)
+            socket.on('resetBuzzer', () => {
+                io.emit('resetBuzzer'); // Broadcast reset to all clients
+            });
             socket.on('disconnect', () => {
                 console.log('Client disconnected');
             });
