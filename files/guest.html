@@ -36,6 +36,11 @@
             margin: 10px 0;
             font-weight: bold;
         }
+        #thank-you-section {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -43,12 +48,23 @@
     <div id="guest-content">
         <h1>Willkommä</h1>
         
-        <div id="guest-name-section">
+        <!-- Info Section -->
+        <div id="info-section">
+            <h2>Wie funktioniert das Spiel?</h2>
+            <p>Beantwort die nachfolgende Fragä, indem du uuswählsch was an ehste zuetrifft. Serst selektierte isch dini Top Antwort. 
+                Du chasch dini Räng vergeh oder uslah. Sobald alli Frage gmacht hesch isches wichtig dasses abschicksch. 
+                Das Ganzä wird denn am abig für es Spieli bruucht. Viel Spass!</p>
+            <button id="proceed-button">Verstande! Wiiter</button>
+        </div>
+
+        <!-- Name Input Section -->
+        <div id="guest-name-section" style="display: none;">
             <label for="guest-name">Wie heissisch?:</label>
             <input type="text" id="guest-name" placeholder="Your Name">
             <button id="start-button">Startä</button>
         </div>
 
+        <!-- Question Section -->
         <div id="questions-section" style="display: none;">
             <h2>Beantworte die folgend Frag:</h2>
             <div id="question-indicator"></div>
@@ -60,7 +76,14 @@
             </div>
         </div>
 
+        <!-- Submit Button -->
         <button id="submit-button" style="display: none;">Antworte abschickä</button>
+
+        <!-- Thank You Section -->
+        <div id="thank-you-section">
+            <h2>Dankeschön für dini Teilnahm!</h2>
+            <p>Dini Antworten sind abgschickt worde. Du chasch jetzt din Tag gnüsse!</p>
+        </div>
     </div>
 
     <script>
@@ -117,7 +140,7 @@
             questionContainer.appendChild(questionDiv);
 
             // Update the question indicator
-            questionIndicator.innerText = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+            questionIndicator.innerText = `Frage ${currentQuestionIndex + 1} von ${questions.length}`;
         }
 
         // Toggle the selection of an answer (select/unselect)
@@ -242,14 +265,24 @@
 
             const data = await response.json();
             if (response.status === 200) {
-                alert('Answers submitted successfully!');
-                currentSelections = {}; // Clear selections after submission
+                // Hide the questions and submit button
+                document.getElementById('questions-section').style.display = 'none';
+                document.getElementById('submit-button').style.display = 'none';
+
+                // Show thank you section
+                document.getElementById('thank-you-section').style.display = 'block';
             } else {
                 alert('Failed to submit answers');
             }
         }
 
-        // Start the questionnaire
+        // Start the questionnaire after the guest proceeds from the info section
+        document.getElementById('proceed-button').addEventListener('click', () => {
+            document.getElementById('info-section').style.display = 'none';
+            document.getElementById('guest-name-section').style.display = 'block';
+        });
+
+        // Start the questionnaire after the guest provides their name
         document.getElementById('start-button').addEventListener('click', async () => {
             guestName = document.getElementById('guest-name').value.trim();
 
