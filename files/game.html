@@ -172,6 +172,9 @@
                             item.classList.add('team1-color');
                         } else if (team === 'Team 2') {
                             item.classList.add('team2-color');
+                        } else {
+                            // No team - unanswered, so no color applied
+                            item.style.backgroundColor = '#e7f1ff'; // Keep default background for unanswered
                         }
 
                         const countElement = item.querySelector('.count');
@@ -211,7 +214,7 @@
             });
             socket.on('resetBuzzer', () => {
                 const buzzedInfo = document.getElementById('buzzed-info');
-                buzzedInfo.style.display = 'none'; // Show the buzzed info
+                buzzedInfo.style.display = 'none'; // Hide the buzzed info
             });
 
         </script>

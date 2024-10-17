@@ -270,6 +270,9 @@ async function startServer() {
             socket.on('revealAnswer', (answerData) => {
                 io.emit('revealAnswer', { answerText: answerData.answerText, team: answerData.team } );
             });
+            socket.on('revealUnanswered', (answerData) => {
+                io.emit('revealUnanswered', { answerText: answerData.answerText, team: answerData.team } );
+            });
         });
 
         // Start the server
